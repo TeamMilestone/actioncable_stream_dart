@@ -4,7 +4,7 @@ description: >-
   ActionCable client port in dart using streams, available in web, dartVM and flutter.
 homepage: https://github.com/kwent/actioncable_stream_dart
 environment:
-  sdk: ">=2.0.0 <3.0.0"
+  sdk: ">=2.17.6 <3.0.0"
 
 dependencies:
   rxdart: ^0.27.7
