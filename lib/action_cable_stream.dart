@@ -5,24 +5,37 @@ import 'dart:convert';
 import 'package:rxdart/rxdart.dart';
 import 'package:web_socket_channel/io.dart';
 
+typedef _OnConnectionLostFunction = void Function();
+
 class ActionCable {
   IOWebSocketChannel? _socketChannel;
   StreamSubscription? _listener;
   PublishSubject<ActionCableDataState>? stream;
+  DateTime? _lastPing;
+  late Timer _timer;
+  Duration? timeoutAfter;
+  Duration? healthCheckDuration;
+  _OnConnectionLostFunction? onConnectionLost;
 
   ActionCable.Stream(
     String url, {
     Map<String, String> headers = const {},
+    this.healthCheckDuration,
+    this.timeoutAfter,
+    this.onConnectionLost,
   }) {
-    _socketChannel = IOWebSocketChannel.connect(url, headers: headers);
+    _socketChannel = IOWebSocketChannel.connect(url, headers: headers, pingInterval: Duration(seconds: 3));
     stream = PublishSubject<ActionCableDataState>();
     stream?.sink.add(ActionCableConnectionLoading());
     _listener = _socketChannel?.stream.listen(_onData, onError: (Object err) {
       stream?.sink.add(ActionCableError('Something went wrong while trying to connect.'));
     });
+
+    _timer = Timer.periodic(healthCheckDuration ?? const Duration(seconds: 3), healthCheck);
   }
 
   void disconnect() {
+    _timer.cancel();
     _socketChannel?.sink.close();
     stream?.close();
     _listener?.cancel();
@@ -64,7 +77,7 @@ class ActionCable {
   void _handleProtocolMsg(Map payload) {
     switch (payload['type']) {
       case 'ping':
-        // stream.sink.add(ActionCablePing());
+        _lastPing = DateTime.fromMillisecondsSinceEpoch(payload['message'] * 1000);
         break;
       case 'welcome':
         stream?.sink.add(ActionCableConnected());
@@ -91,5 +104,15 @@ class ActionCable {
 
   void _send(Map payload) {
     _socketChannel?.sink.add(jsonEncode(payload));
+  }
+
+  void healthCheck(_) {
+    if (_lastPing == null) {
+      return;
+    }
+    if (DateTime.now().difference(_lastPing as DateTime) > (timeoutAfter ?? const Duration(seconds: 6))) {
+      this.disconnect();
+      if (this.onConnectionLost != null) this.onConnectionLost!();
+    }
   }
 }
