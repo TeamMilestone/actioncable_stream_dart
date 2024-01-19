@@ -9,3 +9,5 @@ environment:
 dependencies:
   rxdart: ^0.27.7
   web_socket_channel: ^2.2.0
+  flutter: 
+    sdk: flutter

@@ -1,14 +1,21 @@
+import 'dart:io';
+
+import 'package:web_socket_channel/html.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:stream_channel/stream_channel.dart';
+
 import 'action_cable_stream_states.dart';
 import 'channel_id.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:rxdart/rxdart.dart';
 import 'package:web_socket_channel/io.dart';
 
 typedef _OnConnectionLostFunction = void Function();
 
 class ActionCable {
-  IOWebSocketChannel? _socketChannel;
+  StreamChannelMixin? _socketChannel;
   StreamSubscription? _listener;
   PublishSubject<ActionCableDataState>? stream;
   DateTime? _lastPing;
@@ -24,7 +31,7 @@ class ActionCable {
     this.timeoutAfter,
     this.onConnectionLost,
   }) {
-    _socketChannel = IOWebSocketChannel.connect(url, headers: headers, pingInterval: Duration(seconds: 3));
+    _socketChannel = _connectSocketChannel(url, headers);
     stream = PublishSubject<ActionCableDataState>();
     stream?.sink.add(ActionCableConnectionLoading());
     _listener = _socketChannel?.stream.listen(_onData, onError: (Object err) {
@@ -32,6 +39,13 @@ class ActionCable {
     });
 
     _timer = Timer.periodic(healthCheckDuration ?? const Duration(seconds: 3), healthCheck);
+  }
+
+  StreamChannelMixin? _connectSocketChannel(String url, Map<String, String> headers) {
+    if (kIsWeb) {
+      return HtmlWebSocketChannel.connect(Uri.parse(url));
+    }
+    return IOWebSocketChannel.connect(url, headers: headers, pingInterval: Duration(seconds: 3));
   }
 
   void disconnect() {
