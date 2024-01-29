@@ -1,16 +1,11 @@
-import 'dart:io';
-
-import 'package:web_socket_channel/html.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:action_cable_stream/action_cable_stream_channel.dart';
 import 'package:stream_channel/stream_channel.dart';
 
 import 'action_cable_stream_states.dart';
 import 'channel_id.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:rxdart/rxdart.dart';
-import 'package:web_socket_channel/io.dart';
 
 typedef _OnConnectionLostFunction = void Function();
 
@@ -42,10 +37,7 @@ class ActionCable {
   }
 
   StreamChannelMixin? _connectSocketChannel(String url, Map<String, String> headers) {
-    if (kIsWeb) {
-      return HtmlWebSocketChannel.connect(Uri.parse(url));
-    }
-    return IOWebSocketChannel.connect(url, headers: headers, pingInterval: Duration(seconds: 3));
+    return ActionCableStreamChannel.connect(url, headers);
   }
 
   void disconnect() {
